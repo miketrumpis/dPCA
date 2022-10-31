@@ -91,7 +91,7 @@ class dPCA(BaseEstimator):
     >>> print(pca.explained_variance_ratio_)
     [ 0.99244...  0.00755...]
     """
-    def __init__(self, labels=None, join=None, n_components=10, regularizer=None, copy=True, n_iter=0):
+    def __init__(self, labels=None, join=None, n_components=10, regularizer=None, copy=True, n_iter=0, debug: int=0):
         # create labels from alphabet if not provided
         if isinstance(labels,str):
             self.labels = labels
@@ -110,10 +110,11 @@ class dPCA(BaseEstimator):
         self.n_iter = n_iter
 
         # set debug mode, 0 = no reports, 1 = warnings, 2 = warnings & progress, >2 = everything
-        self.debug = 2
+        self.debug = debug
 
         if regularizer == 'auto':
-            print("""You chose to determine the regularization parameter automatically. This can
+            if self.debug:
+                print("""You chose to determine the regularization parameter automatically. This can
                     take substantial time and grows linearly with the number of crossvalidation
                     folds. The latter can be set by changing self.n_trials (default = 3). Similarly,
                     use self.protect to set the list of axes that are not supposed to get to get shuffled
@@ -392,7 +393,8 @@ class dPCA(BaseEstimator):
         N_samples = self._get_n_samples(trialX,protect=self.protect)
 
         for trial in range(self.n_trials):
-            print("Starting trial ", trial + 1, "/", self.n_trials)
+            if self.debug:
+                print("Starting trial ", trial + 1, "/", self.n_trials)
 
             # perform split into training and test trials
             trainX, validX = self.train_test_split(X,trialX,N_samples=N_samples)
@@ -599,7 +601,8 @@ class dPCA(BaseEstimator):
                 protected = True
             else:
                 protected = False
-                print('Not all protected axis are at the end! While the algorithm will still work, the performance of the shuffling algorithm will substantially decrease due to unavoidable copies.')
+                if self.debug:
+                    print('Not all protected axis are at the end! While the algorithm will still work, the performance of the shuffling algorithm will substantially decrease due to unavoidable copies.')
 
         return protected
 
@@ -808,7 +811,8 @@ class dPCA(BaseEstimator):
                 scores = {key : np.empty((self.n_components[key], n_splits, K)) for key in keys}
 
             for shuffle in range(n_splits):
-                print('.', end=' ')
+                if self.debug:
+                    print('.', end=' ')
 
                 # do train-validation split
                 trainX, validX = self.train_test_split(X,trialX)
@@ -849,7 +853,8 @@ class dPCA(BaseEstimator):
             return scores
 
         if self.opt_regularizer_flag:
-            print("Regularization not optimized yet; start optimization now.")
+            if self.debug:
+                print("Regularization not optimized yet; start optimization now.")
             self._optimize_regularization(X,trialX)
 
         keys = list(self.marginalizations.keys())
@@ -859,16 +864,19 @@ class dPCA(BaseEstimator):
         trialX = trialX.copy()
 
         # compute score of original data
-        print("Compute score of data: ", end=' ')
+        if self.debug:
+            print("Compute score of data: ", end=' ')
         true_score = compute_mean_score(X,trialX,n_splits)
-        print("Finished.")
+        if self.debug:
+            print("Finished.")
 
         # data collection
         scores = {key : [] for key in keys}
 
         # iterate over shuffles
         for it in range(n_shuffles):
-            print("\rCompute score of shuffled data: ", str(it), "/", str(n_shuffles), end=' ')
+            if self.debug:
+                print("\rCompute score of shuffled data: ", str(it), "/", str(n_shuffles), end=' ')
 
             # shuffle labels
             self.shuffle_labels(trialX)
